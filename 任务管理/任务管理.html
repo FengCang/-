@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>任务管理</title>
+	
+    <meta name="keywords" content="keyword1,keyword2,keyword3">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+    <meta name="description" content="this is my page">
+    <meta name="content-type" content="text/html; charset=gbk">
+    
+    <!--<link rel="stylesheet" type="text/css" href="./styles.css">-->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+	<style>
+		.myText{
+			width:180px;display:inline-block;
+		}
+	</style>
+	
+  </head>
+	
+  <body>
+	<div id="example1">
+		<div class="container">
+			<br>
+			<div class="col-lg-8">
+				<form action="" class="form-inline" @submit.prevent>
+					<div class="form-group">
+						<input type="text" class="form-control" v-model="todo" />
+					</div>
+					<button class="btn btn-primary" @click="add">添加</button>
+				</form>		
+				<br><br>
+				<div class="panel panel-default">
+					<div class="panel-heading clearfix">
+						任务列表
+						<div class="btn-group pull-right">
+							<button :class="['btn', 'btn-'+(i==cur.nav?'primary':'default')]" v-for="nav,i in navs" @click="cur.nav=i" >{{nav}}</button>
+						</div>	
+					</div>
+					<ul class="list-group" v-if="todosInfo.todos.length">
+						<li class="list-group-item clearfix" v-for="td in todosInfo.todos" :key="'td'+td.id">
+							<input type="checkbox" :value="td.id" v-model='ids'/>
+							<span :class="['text-'+(td.status==1?'success':'primary')]" @dblclick="cur.todo=td" v-if="cur.todo.id!=td.id">{{td.text}}</span>
+							<input type="text" class="form-control myText" v-model="temp_todo" v-focus @keyup.enter="td.text=temp_todo;cur.todo={};" @blur="cur.todo={}" v-else />
+							<div class="btn-group pull-right">
+								<button :class="['btn','btn-'+(td.status==1?'success':'primary')]" @click="td.status=!td.status">{{td.status==1?'标记完成':'标记未完成'}}</button>
+								<button class="btn btn-danger"  @click="del(td)">删除</button>
+							</div>
+						</li>
+					</ul>
+					<div class="panel panel-body" v-else>
+						暂无
+					</div>
+					<div class="panel-footer clearfix" v-show="todosInfo.todos.length">
+						<input type="checkbox" :checked='is_all' @click.prevent="checkAll">
+						<button class="btn btn-danger pull-right" @click="del_select()">删除所选</button>
+					</div>
+				</div>
+				<p>共{{todosInfo.num}}项任务，已完成{{todosInfo.done_num}}项，未完成{{todosInfo.notdone_num}}项</p>
+			</div>
+		</div>
+	</div>
+	<script>
+		// 注册一个全局自定义指令 `v-focus`
+		Vue.directive('focus', {
+			// 当被绑定的元素插入到 DOM 中时……
+			inserted: function (el) {
+			// 聚焦元素
+			el.focus()
+			}
+		})
+		var example1 = new Vue({
+			el:'#example1',
+			data:{
+				todos:[],
+				todo:'',
+				temp_todo:'',
+				navs:['全部任务','已完成','未完成'],
+				cur:{
+					nav:0,
+					todo:{},
+				},
+				ids:[]
+			},
+			computed:{
+				todosInfo:function(){
+					var res={
+						todos:[],
+						num:this.todos.length,
+						notdone_num:0,
+						done_num:0,
+						
+					};
+					var todosTemp=[];
+					var _this=this;
+					
+					this.todos.forEach(function(todo){
+						switch(_this.cur.nav){
+							case 1:
+								
+								if(todo.status) todosTemp.push(todo);
+								break;
+							case 2:
+						
+								if(!todo.status) todosTemp.push(todo);
+								break;
+							default:
+								
+								todosTemp.push(todo);
+								break;
+						}
+						if(todo.status){
+							res.done_num++;
+						}else{
+							res.notdone_num++;
+						}
+					})
+					res.todos=todosTemp;
+					return res;	
+				},
+				is_all:function(){
+					var rst=true;
+					var ids=','+this.ids.join(',')+',';
+					//alert(ids);
+					for(var i=0;i<this.todosInfo.todos.length;++i){
+						var id=this.todosInfo.todos[i].id;
+						if(ids.indexOf(','+id+',')==-1){
+							rst=false;
+							break;
+						}
+					}
+					return rst;
+				}
+			},
+			methods:{
+				add:function(){
+					if(!this.todo.length) return;
+					var id=1,len=this.todos.length;
+					if(len) id=this.todos[len-1].id+1;
+					this.todos.push({
+						id:id,
+						text:this.todo,
+						status:0
+					});
+					this.todo='';
+				},
+				del:function(td){
+					if(!confirm('确认删除？')) return;
+					for(var i=0;i<this.todos.length;i++){
+						if(this.todos[i].id==td.id){
+							this.todos.splice(i,1);
+							break;
+						}
+					}
+				},
+				del_select:function(){
+					if(!this.ids.length) return;
+					if(!confirm('确认删除？')) return;
+					var todos=[];
+					var ids=','+this.ids.join(',')+',';
+					//alert(ids);
+					this.todos.forEach(function(td){
+						if(ids.indexOf(','+td.id+',')==-1) todos.push(td);
+					});
+					this.todos=todos;
+					this.ids=[];
+				},
+				checkAll:function(){
+					if(this.is_all) {
+						this.ids=[];	
+					}else{
+						var ids=[];
+						this.todosInfo.todos.forEach(function(td){
+							ids.push(td.id);
+						});
+						this.ids=ids;
+					}
+				}
+			},
+			watch:{
+				"cur.nav":function(){
+					this.ids=[];
+				},
+				"cur.todo":function(td){
+					this.temp_todo=td.text;
+				},
+				todos:{
+					handler:function(todos){
+						//判断localStorage的类型
+						//alert(typeof(localStorage)+""=='undefined');
+						if(typeof(localStorage)!=undefined){
+							localStorage.setItem('todos',JSON.stringify(todos));//Ie浏览器不支持此功能
+						}
+					},
+					deep:true
+				}
+			},
+			created:function(){
+				var todos=localStorage.getItem('todos');
+				todos = todos ? JSON.parse(todos):[];
+				this.todos=todos;
+			}
+		});
+	</script>
+  </body>
+
+</html>
